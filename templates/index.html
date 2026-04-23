@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Posts | MiniPosts{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <h1>Posts</h1>
+    <p class="muted">Create, edit, and delete posts stored in SQLite.</p>
+</section>
+
+{% if posts|length == 0 %}
+    <div class="card empty">
+        <h2>No posts yet</h2>
+        <p class="muted">Click “New post” to create your first one.</p>
+        <a class="btn btn-primary" href="{{ url_for('new_post') }}">New post</a>
+    </div>
+{% else %}
+    <div class="grid">
+        {% for post in posts %}
+            <article class="card">
+                <h2 class="card-title">
+                    <a href="{{ url_for('show_post', post_id=post.id) }}">{{ post.title }}</a>
+                </h2>
+                <p class="card-snippet">{{ post.content[:160] }}{% if post.content|length > 160 %}…{% endif %}</p>
+                <div class="card-meta">
+                    <span class="muted">Updated {{ post.updated_at }}</span>
+                    <div class="card-actions">
+                        <a class="btn btn-ghost" href="{{ url_for('edit_post', post_id=post.id) }}">Edit</a>
+                        <form method="post" action="{{ url_for('delete_post', post_id=post.id) }}" onsubmit="return confirm('Delete this post?');">
+                            <button class="btn btn-danger" type="submit">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </article>
+        {% endfor %}
+    </div>
+{% endif %}
+{% endblock %}

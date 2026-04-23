@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% if post %}
+    {% set page_title = "Edit post" %}
+{% else %}
+    {% set page_title = "New post" %}
+{% endif %}
+
+{% block title %}{{ page_title }} | MiniPosts{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <h1>{{ page_title }}</h1>
+    <p class="muted">Keep it short and clear. You can edit later.</p>
+</section>
+
+<div class="card">
+    <form method="post" action="{% if post %}{{ url_for('update_post', post_id=post.id) }}{% else %}{{ url_for('create_post') }}{% endif %}">
+        <label class="field">
+            <span>Title</span>
+            <input name="title" type="text" maxlength="120" required value="{{ post.title if post else '' }}" placeholder="e.g. My first post">
+        </label>
+
+        <label class="field">
+            <span>Content</span>
+            <textarea name="content" rows="10" required placeholder="Write something...">{{ post.content if post else '' }}</textarea>
+        </label>
+
+        <div class="form-actions">
+            <a class="btn btn-ghost" href="{{ url_for('index') }}">Cancel</a>
+            <button class="btn btn-primary" type="submit">
+                {% if post %}Save changes{% else %}Create post{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

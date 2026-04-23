@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}Not Found | MiniPosts{% endblock %}
+
+{% block content %}
+<div class="card empty">
+    <h1>404</h1>
+    <p class="muted">That post doesn’t exist (or was deleted).</p>
+    <a class="btn btn-primary" href="{{ url_for('index') }}">Go home</a>
+</div>
+{% endblock %}
