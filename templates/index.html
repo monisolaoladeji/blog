@@ -1,38 +1,61 @@
 {% extends "base.html" %}
 
-{% block title %}Posts | MiniPosts{% endblock %}
-
 {% block content %}
-<section class="page-head">
-    <h1>Posts</h1>
-    <p class="muted">Create, edit, and delete posts stored in SQLite.</p>
-</section>
 
-{% if posts|length == 0 %}
-    <div class="card empty">
-        <h2>No posts yet</h2>
-        <p class="muted">Click “New post” to create your first one.</p>
-        <a class="btn btn-primary" href="{{ url_for('new_post') }}">New post</a>
-    </div>
+<div class="page-head">
+    {% if search_query %}
+        <a href="{{ url_for('index') }}" class="breadcrumb">← View all posts</a>
+        <h1>Search results for "{{ search_query }}"</h1>
+    {% else %}
+        <h1>Latest Feed</h1>
+        <p class="muted">Discover what's new in MiniPosts</p>
+    {% endif %}
+</div>
+
+<div class="grid">
+
+{% for post in posts %}
+    <article class="card">
+        {% if post.image %}
+            <img src="{{ url_for('static', filename='uploads/' + post.image) }}" class="post-img">
+        {% endif %}
+
+        <h2 class="card-title">
+            <a href="{{ url_for('show_post', post_id=post.id) }}">
+                {{ post.title }}
+            </a>
+        </h2>
+
+        <div class="card-snippet">
+            {{ post.content[:150] }}{% if post.content|length > 150 %}...{% endif %}
+        </div>
+
+        <div class="card-meta">
+            <div class="muted">
+                <small>By <strong>{{ post.author if post.author else 'Unknown' }}</strong> • {{ post.created_at[:10] }}</small>
+            </div>
+            
+            <div class="card-actions">
+                {% if session.get('user_id') == post.user_id %}
+                    <a class="btn btn-ghost" href="{{ url_for('edit_post', post_id=post.id) }}">Edit</a>
+                    <form method="POST" action="{{ url_for('delete_post', post_id=post.id) }}" onsubmit="return confirm('Are you sure you want to delete this post?')">
+                        <button class="btn btn-danger">Delete</button>
+                    </form>
+                {% else %}
+                    <a class="btn btn-ghost" href="{{ url_for('show_post', post_id=post.id) }}">View</a>
+                {% endif %}
+            </div>
+        </div>
+    </article>
 {% else %}
-    <div class="grid">
-        {% for post in posts %}
-            <article class="card">
-                <h2 class="card-title">
-                    <a href="{{ url_for('show_post', post_id=post.id) }}">{{ post.title }}</a>
-                </h2>
-                <p class="card-snippet">{{ post.content[:160] }}{% if post.content|length > 160 %}…{% endif %}</p>
-                <div class="card-meta">
-                    <span class="muted">Updated {{ post.updated_at }}</span>
-                    <div class="card-actions">
-                        <a class="btn btn-ghost" href="{{ url_for('edit_post', post_id=post.id) }}">Edit</a>
-                        <form method="post" action="{{ url_for('delete_post', post_id=post.id) }}" onsubmit="return confirm('Delete this post?');">
-                            <button class="btn btn-danger" type="submit">Delete</button>
-                        </form>
-                    </div>
-                </div>
-            </article>
-        {% endfor %}
+    <div class="card empty">
+        <h2>No posts found</h2>
+        <p class="muted">{% if search_query %}Try a different search term or {% endif %}start by creating a new post!</p>
+        <br>
+        <a href="{{ url_for('new_post') }}" class="btn btn-primary">Create Your First Post</a>
     </div>
-{% endif %}
+{% endfor %}
+
+</div>
+
 {% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-head">
+    <a href="{{ url_for('index') }}" class="breadcrumb">← Back to Feed</a>
+    <h1>{% if mode == 'login' %}Login{% else %}Create Account{% endif %}</h1>
+    <p class="muted">
+        {% if mode == 'login' %}
+            Welcome back! Please enter your details.
+        {% else %}
+            Join MiniPosts and start sharing your thoughts.
+        {% endif %}
+    </p>
+</div>
+
+<div class="card" style="max-width: 400px; margin: 0 auto;">
+    <form method="POST">
+        <div class="field">
+            <span>Username</span>
+            <input type="text" name="username" required placeholder="Enter username...">
+        </div>
+
+        <div class="field">
+            <span>Password</span>
+            <input type="password" name="password" required placeholder="Enter password...">
+        </div>
+
+        <div class="form-actions" style="flex-direction: column; gap: 15px;">
+            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+                {% if mode == 'login' %}Login{% else %}Register{% endif %}
+            </button>
+            
+            <div style="text-align: center;">
+                {% if mode == 'login' %}
+                    <small>Don't have an account? <a href="{{ url_for('register') }}" style="color: #2563eb;">Register here</a></small>
+                {% else %}
+                    <small>Already have an account? <a href="{{ url_for('login') }}" style="color: #2563eb;">Login here</a></small>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

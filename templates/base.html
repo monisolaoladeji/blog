@@ -1,3 +1,4 @@
+<!-- templates/base.html -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -5,30 +6,102 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}MiniPosts{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
+
 <body>
-    <header class="site-header">
-        <div class="container header-inner">
-            <a class="brand" href="{{ url_for('index') }}">MiniPosts</a>
-            <nav class="nav">
-                <a class="nav-link" href="{{ url_for('index') }}">All posts</a>
-                <a class="btn btn-primary" href="{{ url_for('new_post') }}">New post</a>
-            </nav>
-        </div>
-    </header>
 
-    <main class="container">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="flash-stack">
-                    {% for category, message in messages %}
-                        <div class="flash flash-{{ category }}">{{ message }}</div>
-                    {% endfor %}
-                </div>
+<header class="site-header">
+    <div class="container header-inner">
+
+        <a class="brand" href="{{ url_for('index') }}">MiniPosts</a>
+
+        <nav class="nav">
+            <a href="{{ url_for('index') }}">All Posts</a>
+
+            <form action="{{ url_for('index') }}" method="GET">
+                <input class="search-box" type="text" name="search" placeholder="Search posts...">
+            </form>
+
+            {% if session.get('user_id') %}
+                <a class="btn btn-primary" href="{{ url_for('new_post') }}">New Post</a>
+                <span style="color: rgba(255,255,255,0.6); font-size: 0.9rem;">Hi, {{ session.username }}</span>
+                <a href="{{ url_for('logout') }}" style="color: #ef4444; font-size: 0.9rem;">Logout</a>
+            {% else %}
+                <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                <a class="btn btn-primary" href="{{ url_for('register') }}">Join / Sign Up</a>
             {% endif %}
-        {% endwith %}
+        </nav>
 
-        {% block content %}{% endblock %}
-    </main>
+    </div>
+</header>
+
+
+<main class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+
+</main>
+
+
+<!-- AI CHAT -->
+
+<button class="chat-toggle" onclick="toggleChat()">💬</button>
+
+<div class="chat-box" id="chatBox">
+    <strong>MiniPosts AI</strong>
+
+    <input type="text" id="userQuestion" placeholder="Ask about this app..." onkeypress="if(event.key === 'Enter') askAI()">
+
+    <button class="btn btn-primary" onclick="askAI()">Ask</button>
+
+    <div id="aiReply"></div>
+</div>
+
+
+<script>
+function toggleChat(){
+    let box = document.getElementById("chatBox");
+
+    if(box.style.display === "block"){
+        box.style.display = "none";
+    }else{
+        box.style.display = "block";
+    }
+}
+
+function askAI(){
+    let q = document.getElementById("userQuestion").value;
+    let reply = document.getElementById("aiReply");
+    
+    if(!q) return;
+
+    reply.innerHTML = "<em>Thinking...</em>";
+
+    fetch("/ask-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: q })
+    })
+    .then(res => res.json())
+    .then(data => {
+        reply.innerHTML = data.reply;
+    })
+    .catch(err => {
+        reply.innerHTML = "Sorry, I'm having trouble connecting right now.";
+    });
+}
+</script>
+
 </body>
 </html>

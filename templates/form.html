@@ -1,35 +1,41 @@
 {% extends "base.html" %}
 
-{% if post %}
-    {% set page_title = "Edit post" %}
-{% else %}
-    {% set page_title = "New post" %}
-{% endif %}
-
-{% block title %}{{ page_title }} | MiniPosts{% endblock %}
-
 {% block content %}
-<section class="page-head">
-    <h1>{{ page_title }}</h1>
-    <p class="muted">Keep it short and clear. You can edit later.</p>
-</section>
+<div class="page-head">
+    <a href="{{ url_for('index') }}" class="breadcrumb">← Back to Feed</a>
+    <h1>{% if post %}Edit Post{% else %}New Post{% endif %}</h1>
+</div>
 
 <div class="card">
-    <form method="post" action="{% if post %}{{ url_for('update_post', post_id=post.id) }}{% else %}{{ url_for('create_post') }}{% endif %}">
-        <label class="field">
+    <form action="{% if post %}{{ url_for('update_post', post_id=post.id) }}{% else %}{{ url_for('create_post') }}{% endif %}" 
+          method="POST" 
+          enctype="multipart/form-data">
+        
+        <div class="field">
             <span>Title</span>
-            <input name="title" type="text" maxlength="120" required value="{{ post.title if post else '' }}" placeholder="e.g. My first post">
-        </label>
+            <input type="text" name="title" value="{{ post.title if post else '' }}" required placeholder="Enter post title...">
+        </div>
 
-        <label class="field">
+        <div class="field">
             <span>Content</span>
-            <textarea name="content" rows="10" required placeholder="Write something...">{{ post.content if post else '' }}</textarea>
-        </label>
+            <textarea name="content" rows="10" required placeholder="Write your post content here...">{{ post.content if post else '' }}</textarea>
+        </div>
+
+        <div class="field">
+            <span>Featured Image</span>
+            {% if post and post.image %}
+                <div style="margin-bottom: 10px;">
+                    <img src="{{ url_for('static', filename='uploads/' + post.image) }}" style="max-width: 200px; border-radius: 8px; display: block;">
+                    <small class="muted">Current image: {{ post.image }}</small>
+                </div>
+            {% endif %}
+            <input type="file" name="image" accept="image/*">
+        </div>
 
         <div class="form-actions">
-            <a class="btn btn-ghost" href="{{ url_for('index') }}">Cancel</a>
-            <button class="btn btn-primary" type="submit">
-                {% if post %}Save changes{% else %}Create post{% endif %}
+            <a href="{{ url_for('index') }}" class="btn btn-ghost">Cancel</a>
+            <button type="submit" class="btn btn-primary">
+                {% if post %}Update Post{% else %}Publish Post{% endif %}
             </button>
         </div>
     </form>
