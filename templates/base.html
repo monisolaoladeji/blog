@@ -88,7 +88,7 @@ function askAI(){
 
     reply.innerHTML = "<em>Thinking...</em>";
 
-    fetch("/ask-ai", {
+    fetch("https://blog-y93r.onrender.com/ask-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: q })
