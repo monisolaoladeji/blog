@@ -18,6 +18,9 @@
 
         <nav class="nav">
             <a href="{{ url_for('index') }}">All Posts</a>
+            {% if session.get('user_id') %}
+                <a href="{{ url_for('my_posts') }}">My Posts</a>
+            {% endif %}
 
             <form action="{{ url_for('index') }}" method="GET">
                 <input class="search-box" type="text" name="search" placeholder="Search posts...">

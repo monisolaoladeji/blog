@@ -1,3 +1,4 @@
+import os
 import sqlite3
 import uuid
 from datetime import datetime, timezone
@@ -100,7 +101,7 @@ def login():
             session["user_id"] = user["id"]
             session["username"] = user["username"]
             flash(f"Welcome back, {username}!", "success")
-            return redirect(url_for("index"))
+            return redirect(url_for("my_posts"))
         else:
             flash("Invalid username or password", "error")
             
@@ -138,6 +139,24 @@ def index():
             """
             posts = conn.execute(query).fetchall()
     return render_template("index.html", posts=posts, search_query=search_query)
+
+
+@app.route("/my-posts")
+def my_posts():
+    if "user_id" not in session:
+        flash("Please login to view your posts.", "error")
+        return redirect(url_for("login"))
+
+    with get_db() as conn:
+        posts = conn.execute("""
+            SELECT posts.*, users.username as author
+            FROM posts
+            JOIN users ON posts.user_id = users.id
+            WHERE posts.user_id = ?
+            ORDER BY posts.id DESC
+        """, (session["user_id"],)).fetchall()
+
+    return render_template("my_posts.html", posts=posts)
 
 
 @app.route("/posts/new")
