@@ -91,7 +91,8 @@ function askAI(){
 
     reply.innerHTML = "<em>Thinking...</em>";
 
-    fetch("https://blog-y93r.onrender.com/ask-ai", {
+    const apiUrl = window.API_URL || 'https://blog-y93r.onrender.com';
+    fetch(apiUrl + "/ask-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: q })
