@@ -2,3 +2,7 @@ Flask
 flask-cors
 gunicorn
 python-dotenv
+flask-socketio
+pymongo[srv]
+dnspython
+eventlet
