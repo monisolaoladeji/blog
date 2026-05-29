@@ -10,12 +10,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent
-# Use writable temporary DB on serverless platforms (VERCEL/RENDER/NETLIFY)
-DB_PATH = Path(os.getenv("BLOG_DB_PATH", "/tmp/posts.db" if _is_platform_runtime() else str(BASE_DIR / "posts.db")))
-
 
 def _is_platform_runtime() -> bool:
     return bool(os.getenv("VERCEL") or os.getenv("RENDER") or os.getenv("NETLIFY"))
+
+# Use writable temporary DB on serverless platforms (VERCEL/RENDER/NETLIFY)
+DB_PATH = Path(os.getenv("BLOG_DB_PATH", "/tmp/posts.db" if _is_platform_runtime() else str(BASE_DIR / "posts.db")))
 
 # On serverless platforms use a writable temp dir; otherwise use the repo static/uploads
 UPLOAD_FOLDER = Path(os.getenv("BLOG_UPLOAD_FOLDER", "/tmp/uploads" if _is_platform_runtime() else str(BASE_DIR / "static" / "uploads")))
