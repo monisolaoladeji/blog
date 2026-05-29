@@ -112,6 +112,13 @@ def now():
     return datetime.now(timezone.utc).isoformat()
 
 
+def to_int_if_possible(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 # ---------------- AUTH ----------------
 
 @app.route("/register", methods=["GET", "POST"])
@@ -304,7 +311,7 @@ def create_post():
     return redirect(url_for("index"))
 
 
-@app.route("/posts/<int:post_id>")
+@app.route("/posts/<post_id>")
 def show_post(post_id):
     if MONGO_ENABLED and posts_collection is not None:
         from bson.objectid import ObjectId
@@ -318,13 +325,18 @@ def show_post(post_id):
         post = {"id": str(doc.get("_id")), "title": doc.get("title"), "content": doc.get("content"), "image": doc.get("image"), "created_at": doc.get("created_at"), "author": doc.get("author")}
         return render_template("show.html", post=post)
 
+    sqlite_id = to_int_if_possible(post_id)
+    if sqlite_id is None:
+        flash("Post not found!", "error")
+        return redirect(url_for("index"))
+
     with get_db() as conn:
         post = conn.execute("""
             SELECT posts.*, users.username as author 
             FROM posts 
             LEFT JOIN users ON posts.user_id = users.id 
             WHERE posts.id=?
-        """, (post_id,)).fetchone()
+        """, (sqlite_id,)).fetchone()
 
     if not post:
         flash("Post not found!", "error")
@@ -333,7 +345,7 @@ def show_post(post_id):
     return render_template("show.html", post=post)
 
 
-@app.route("/posts/<int:post_id>/edit")
+@app.route("/posts/<post_id>/edit")
 def edit_post(post_id):
     if "user_id" not in session:
         flash("Please login first.", "error")
@@ -368,7 +380,7 @@ def edit_post(post_id):
     return render_template("form.html", post=post)
 
 
-@app.route("/posts/<int:post_id>/update", methods=["POST"])
+@app.route("/posts/<post_id>/update", methods=["POST"])
 def update_post(post_id):
     if "user_id" not in session:
         return redirect(url_for("login"))
@@ -411,8 +423,13 @@ def update_post(post_id):
         posts_collection.update_one({"_id": ObjectId(post_id)}, {"$set": {"title": title, "content": content, "image": image_name, "updated_at": now()}})
         return redirect(url_for("show_post", post_id=post_id))
 
+    sqlite_id = to_int_if_possible(post_id)
+    if sqlite_id is None:
+        flash("Post not found!", "error")
+        return redirect(url_for("index"))
+
     with get_db() as conn:
-        post = conn.execute("SELECT * FROM posts WHERE id=?", (post_id,)).fetchone()
+        post = conn.execute("SELECT * FROM posts WHERE id=?", (sqlite_id,)).fetchone()
         
         if post["user_id"] != session["user_id"]:
             flash("Unauthorized!", "error")
@@ -436,14 +453,14 @@ def update_post(post_id):
         UPDATE posts
         SET title=?, content=?, image=?, updated_at=?
         WHERE id=?
-        """, (title, content, image_name, now(), post_id))
+        """, (title, content, image_name, now(), sqlite_id))
         conn.commit()
 
     flash("Post updated successfully!", "success")
     return redirect(url_for("show_post", post_id=post_id))
 
 
-@app.route("/posts/<int:post_id>/delete", methods=["POST"])
+@app.route("/posts/<post_id>/delete", methods=["POST"])
 def delete_post(post_id):
     if "user_id" not in session:
         return redirect(url_for("login"))
@@ -470,8 +487,13 @@ def delete_post(post_id):
         flash("Post deleted successfully!", "success")
         return redirect(url_for("index"))
 
+    sqlite_id = to_int_if_possible(post_id)
+    if sqlite_id is None:
+        flash("Post not found!", "error")
+        return redirect(url_for("index"))
+
     with get_db() as conn:
-        post = conn.execute("SELECT * FROM posts WHERE id=?", (post_id,)).fetchone()
+        post = conn.execute("SELECT * FROM posts WHERE id=?", (sqlite_id,)).fetchone()
         
         if post["user_id"] != session["user_id"]:
             flash("Unauthorized!", "error")
@@ -482,7 +504,7 @@ def delete_post(post_id):
             if image_path.exists():
                 image_path.unlink()
 
-        conn.execute("DELETE FROM posts WHERE id=?", (post_id,))
+        conn.execute("DELETE FROM posts WHERE id=?", (sqlite_id,))
         conn.commit()
 
     flash("Post deleted successfully!", "success")
