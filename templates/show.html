@@ -9,7 +9,7 @@
 
 <div class="card">
     {% if post.image %}
-        <img src="{{ url_for('static', filename='uploads/' + post.image) }}" class="post-img-large">
+        <img src="{{ upload_url(post.image) }}" class="post-img-large">
     {% endif %}
 
     <div class="prose">

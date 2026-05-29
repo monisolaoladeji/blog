@@ -25,7 +25,7 @@
             <span>Featured Image</span>
             {% if post and post.image %}
                 <div style="margin-bottom: 10px;">
-                    <img src="{{ url_for('static', filename='uploads/' + post.image) }}" style="max-width: 200px; border-radius: 8px; display: block;">
+                    <img src="{{ upload_url(post.image) }}" style="max-width: 200px; border-radius: 8px; display: block;">
                     <small class="muted">Current image: {{ post.image }}</small>
                 </div>
             {% endif %}

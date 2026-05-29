@@ -17,7 +17,7 @@
 {% for post in posts %}
     <article class="card">
         {% if post.image %}
-            <img src="{{ url_for('static', filename='uploads/' + post.image) }}" class="post-img">
+            <img src="{{ upload_url(post.image) }}" class="post-img">
         {% endif %}
 
         <h2 class="card-title">

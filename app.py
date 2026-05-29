@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from werkzeug.utils import secure_filename
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
@@ -64,6 +64,24 @@ def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+@app.route("/uploads/<path:filename>")
+def uploaded_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
+
+
+def get_upload_url(filename):
+    if not filename:
+        return ""
+    if filename.startswith("http://") or filename.startswith("https://"):
+        return filename
+    return url_for("uploaded_file", filename=filename)
+
+
+@app.context_processor
+def utility_processor():
+    return {"upload_url": get_upload_url}
 
 
 def init_db():
