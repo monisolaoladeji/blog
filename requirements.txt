@@ -6,3 +6,4 @@ flask-socketio
 pymongo[srv]
 dnspython
 eventlet
+cloudinary

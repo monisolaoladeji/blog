@@ -1,13 +1,18 @@
+import io
+import mimetypes
 import os
 import sqlite3
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from werkzeug.utils import secure_filename
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, send_file
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -31,6 +36,21 @@ except OSError:
 
 load_dotenv()
 
+# Initialize Cloudinary
+CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "").strip()
+CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "").strip()
+CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "").strip()
+CLOUDINARY_ENABLED = False
+
+if CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
+    cloudinary.config(
+        cloud_name=CLOUDINARY_CLOUD_NAME,
+        api_key=CLOUDINARY_API_KEY,
+        api_secret=CLOUDINARY_API_SECRET,
+        secure=True
+    )
+    CLOUDINARY_ENABLED = True
+
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key-change-this-in-production")
 
@@ -40,11 +60,12 @@ CORS(app)
 MONGO_URI = os.getenv("MONGO_URI", "").strip()
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "blog_db")
 MONGO_ENABLED = False
-users_collection = posts_collection = None
+users_collection = posts_collection = grid_fs = None
 if MONGO_URI:
     try:
         from pymongo import MongoClient
         from bson.objectid import ObjectId
+        from gridfs import GridFS
 
         mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
         # trigger server selection
@@ -52,6 +73,7 @@ if MONGO_URI:
         mongo_db = mongo_client[MONGO_DB_NAME]
         users_collection = mongo_db["users"]
         posts_collection = mongo_db["posts"]
+        grid_fs = GridFS(mongo_db)
         MONGO_ENABLED = True
     except Exception as exc:
         print(f"MongoDB init failed: {exc}")
@@ -71,11 +93,38 @@ def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
 
+@app.route("/images/<file_id>")
+def gridfs_image(file_id):
+    if not MONGO_ENABLED or grid_fs is None:
+        return "", 404
+    try:
+        fs_file = grid_fs.get(ObjectId(file_id))
+    except Exception:
+        return "", 404
+
+    return send_file(
+        io.BytesIO(fs_file.read()),
+        mimetype=fs_file.content_type or "application/octet-stream",
+        download_name=fs_file.filename,
+    )
+
+
+def is_gridfs_image(value):
+    return isinstance(value, str) and value.startswith("gridfs:")
+
+
+def gridfs_image_id(value):
+    return value.split(":", 1)[1] if isinstance(value, str) and ":" in value else None
+
+
 def get_upload_url(filename):
     if not filename:
         return ""
     if filename.startswith("http://") or filename.startswith("https://"):
         return filename
+    if is_gridfs_image(filename):
+        file_id = gridfs_image_id(filename)
+        return url_for("gridfs_image", file_id=file_id)
     return url_for("uploaded_file", filename=filename)
 
 
@@ -296,15 +345,28 @@ def create_post():
     image_file = request.files.get("image")
     image_name = None
 
-    image_name = None
     if image_file and image_file.filename:
-        ext = Path(image_file.filename).suffix
-        image_name = f"{uuid.uuid4().hex}{ext}"
-        try:
-            image_file.save(UPLOAD_FOLDER / image_name)
-        except Exception as exc:
-            image_name = None
-            flash(f"Image upload failed: {exc}", "error")
+        if CLOUDINARY_ENABLED:
+            try:
+                # Upload to Cloudinary
+                upload_result = cloudinary.uploader.upload(
+                    image_file,
+                    folder="blog-posts",
+                    public_id=f"post-{uuid.uuid4().hex}",
+                    overwrite=True
+                )
+                image_name = upload_result["secure_url"]
+            except Exception as exc:
+                image_name = None
+                flash(f"Image upload failed: {exc}", "error")
+        else:
+            ext = Path(image_file.filename).suffix
+            image_name = f"{uuid.uuid4().hex}{ext}"
+            try:
+                image_file.save(UPLOAD_FOLDER / image_name)
+            except Exception as exc:
+                image_name = None
+                flash(f"Image upload failed: {exc}", "error")
 
     if MONGO_ENABLED and posts_collection is not None:
         post_doc = {
@@ -427,16 +489,29 @@ def update_post(post_id):
 
         image_name = doc.get("image")
         if image_file and image_file.filename:
-            if image_name:
-                old_image_path = UPLOAD_FOLDER / image_name
-                if old_image_path.exists():
-                    old_image_path.unlink()
-            try:
-                ext = Path(image_file.filename).suffix
-                image_name = f"{uuid.uuid4().hex}{ext}"
-                image_file.save(UPLOAD_FOLDER / image_name)
-            except Exception as exc:
-                flash(f"Image upload failed: {exc}", "error")
+            if CLOUDINARY_ENABLED:
+                try:
+                    # Upload new image to Cloudinary
+                    upload_result = cloudinary.uploader.upload(
+                        image_file,
+                        folder="blog-posts",
+                        public_id=f"post-{uuid.uuid4().hex}",
+                        overwrite=True
+                    )
+                    image_name = upload_result["secure_url"]
+                except Exception as exc:
+                    flash(f"Image upload failed: {exc}", "error")
+            else:
+                if image_name and not image_name.startswith("http"):
+                    old_image_path = UPLOAD_FOLDER / image_name
+                    if old_image_path.exists():
+                        old_image_path.unlink()
+                try:
+                    ext = Path(image_file.filename).suffix
+                    image_name = f"{uuid.uuid4().hex}{ext}"
+                    image_file.save(UPLOAD_FOLDER / image_name)
+                except Exception as exc:
+                    flash(f"Image upload failed: {exc}", "error")
 
         posts_collection.update_one({"_id": ObjectId(post_id)}, {"$set": {"title": title, "content": content, "image": image_name, "updated_at": now()}})
         return redirect(url_for("show_post", post_id=post_id))
@@ -456,16 +531,29 @@ def update_post(post_id):
         image_name = post["image"]
 
         if image_file and image_file.filename:
-            if image_name:
-                old_image_path = UPLOAD_FOLDER / image_name
-                if old_image_path.exists():
-                    old_image_path.unlink()
-            try:
-                ext = Path(image_file.filename).suffix
-                image_name = f"{uuid.uuid4().hex}{ext}"
-                image_file.save(UPLOAD_FOLDER / image_name)
-            except Exception as exc:
-                flash(f"Image upload failed: {exc}", "error")
+            if CLOUDINARY_ENABLED:
+                try:
+                    # Upload new image to Cloudinary
+                    upload_result = cloudinary.uploader.upload(
+                        image_file,
+                        folder="blog-posts",
+                        public_id=f"post-{uuid.uuid4().hex}",
+                        overwrite=True
+                    )
+                    image_name = upload_result["secure_url"]
+                except Exception as exc:
+                    flash(f"Image upload failed: {exc}", "error")
+            else:
+                if image_name and not image_name.startswith("http"):
+                    old_image_path = UPLOAD_FOLDER / image_name
+                    if old_image_path.exists():
+                        old_image_path.unlink()
+                try:
+                    ext = Path(image_file.filename).suffix
+                    image_name = f"{uuid.uuid4().hex}{ext}"
+                    image_file.save(UPLOAD_FOLDER / image_name)
+                except Exception as exc:
+                    flash(f"Image upload failed: {exc}", "error")
 
         conn.execute("""
         UPDATE posts
